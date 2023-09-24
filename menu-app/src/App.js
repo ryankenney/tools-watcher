@@ -5,10 +5,11 @@ function App() {
   const [captureName, setCaptureName] = useState('');
 
   const fetchReferenceImages = () => {
-    fetch('http://localhost:5000/reference_images')
+    fetch('/reference_images')
       .then(response => response.json())
       .then(data => {
-        setMenuItems(data);
+        const sortedData = data.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+        setMenuItems(sortedData);
       })
       .catch(error => {
         console.error('Error fetching reference images:', error);
@@ -17,7 +18,7 @@ function App() {
 
   useEffect(() => {
     const imgElement = document.getElementById('videoFeed');
-    const URL = 'http://localhost:5000/video_grid';
+    const URL = '/video_grid';
     imgElement.src = URL;
     
     // Fetch initial list
@@ -44,7 +45,7 @@ function App() {
   };
 
   const handleSave = () => {
-    fetch('http://localhost:5000/reference_images', {
+    fetch('/reference_images', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
