@@ -9,11 +9,18 @@ app = Flask(__name__, static_folder='menu-app/build')
 camera = cv2.VideoCapture(0)
 
 database_path = "/db/database.sqlite"
+memory_conn = None
 
 # Initialize SQLite Database
 def init_db():
-    conn = sqlite3.connect(database_path)
-    cursor = conn.cursor()
+    global memory_conn
+
+    # Connect to disk-based database and in-memory database
+    disk_conn = sqlite3.connect(database_path)
+    memory_conn = sqlite3.connect("file::memory:?cache=shared", check_same_thread=False,     uri=True)
+
+    # Create table if not exists in disk-based database
+    cursor = disk_conn.cursor()
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS images (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -22,8 +29,20 @@ def init_db():
         image BLOB
     );
     """)
-    conn.commit()
-    conn.close()
+    disk_conn.commit()
+
+    # Copy data from disk-based database to in-memory database
+    disk_conn.backup(memory_conn)
+
+    disk_conn.close()
+
+# Function to persist in-memory DB changes to disk-based DB
+def persist_to_disk():
+    global memory_conn
+
+    disk_conn = sqlite3.connect(database_path)
+    memory_conn.backup(disk_conn)
+    disk_conn.close()
 
 @app.route('/')
 def index():
@@ -39,6 +58,7 @@ def hello():
 
 @app.route('/reference_images', methods=['POST'])
 def save_reference_image():
+    global memory_conn
     try:
         name = request.form.get("name")  # Getting the 'name' field from POST request
         
@@ -63,11 +83,11 @@ def save_reference_image():
         img_binary = img_encoded.tobytes()
 
         # Insert name, timestamp, and image into the SQLite database
-        conn = sqlite3.connect(database_path)
-        cursor = conn.cursor()
+        cursor = memory_conn.cursor()
         cursor.execute("INSERT INTO images (name, timestamp, image) VALUES (?, ?, ?)", (name, timestamp, img_binary))
-        conn.commit()
-        conn.close()
+        memory_conn.commit()
+
+        persist_to_disk()
 
         return jsonify({"status": "success"})
         
@@ -76,9 +96,9 @@ def save_reference_image():
 
 @app.route('/reference_images', methods=['GET'])
 def get_reference_images():
+    global memory_conn
     try:
-        conn = sqlite3.connect(database_path)
-        cursor = conn.cursor()
+        cursor = memory_conn.cursor()
         cursor.execute("SELECT id, name, timestamp FROM images")
         
         images = []
@@ -90,7 +110,7 @@ def get_reference_images():
                 'timestamp': timestamp
             })
         
-        conn.close()
+        memory_conn.commit()
         return jsonify(images)
     
     except Exception as e:
@@ -98,18 +118,19 @@ def get_reference_images():
 
 @app.route('/reference_images', methods=['DELETE'])
 def delete_reference_image():
+    global memory_conn
     try:
         id = request.args.get("id")
         
         if not id:
             return jsonify({"status": "error", "message": "ID is required"})
         
-        conn = sqlite3.connect(database_path)
-        cursor = conn.cursor()
+        cursor = memory_conn.cursor()
         cursor.execute("DELETE FROM images WHERE id = ?", (id,))
-        conn.commit()
-        conn.close()
-        
+        memory_conn.commit()
+
+        persist_to_disk()
+
         return jsonify({"status": "success"})
         
     except Exception as e:

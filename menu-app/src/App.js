@@ -27,8 +27,10 @@ function App() {
   // For initial data fetching and updating image source
   useEffect(() => {
     const imgElement = document.getElementById('videoFeed');
-    const URL = currentReferenceImageId ? `/diff?reference_image_id=${currentReferenceImageId}` : '/video_grid';
-    imgElement.src = URL;
+    const URL = currentReferenceImageId ? `/diff?reference_image_id=${currentReferenceImageId}` : '';
+    if (URL) {
+      imgElement.src = URL;
+    }
   
     // Only fetch data when currentReferenceImageId is null (page initial load)
     if (currentReferenceImageId === null) {
