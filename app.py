@@ -1,9 +1,10 @@
-from flask import Flask, Response
+from flask import Flask, send_from_directory, Response
 import cv2
 import numpy as np
 from datetime import datetime
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='menu-app/build')
+
 camera = cv2.VideoCapture(0)
 
 historical_frames = {
@@ -93,7 +94,15 @@ def generate_grid():
 
 @app.route('/')
 def index():
-    return "Webcam Feed"
+    return send_from_directory('/app/menu-app/build', 'index.html')
+
+@app.route('/<path:filename>')
+def serve_file(filename):
+    return send_from_directory('/app/menu-app/build', filename)
+
+@app.route('/hello')
+def hello():
+    return "Hello, World!"
 
 @app.route('/video_grid')
 def video_grid():
