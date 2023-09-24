@@ -8,4 +8,9 @@ SCRIPT_FILE="$(basename "$0")"
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
 cd "$SCRIPT_DIR"
-bash container.sh run --rm -it -p 127.0.0.1:5000:5000 --device=/dev/video0:/dev/video0 --name tools-watcher tools-watcher:local-build
+bash container.sh run --rm -it -p 127.0.0.1:5000:5000 \
+  --security-opt label=disable \
+  -v "$PWD/db/:/db/:rw" \
+  --device=/dev/video0:/dev/video0 \
+  --name tools-watcher tools-watcher:local-build
+

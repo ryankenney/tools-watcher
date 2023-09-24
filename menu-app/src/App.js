@@ -3,7 +3,8 @@ import React, { useEffect, useState } from 'react';
 function App() {
   const [menuItems, setMenuItems] = useState([]);
   const [captureName, setCaptureName] = useState('');
-
+  const [currentReferenceImageId, setCurrentReferenceImageId] = useState(null);
+  
   const fetchReferenceImages = () => {
     fetch('/reference_images')
       .then(response => response.json())
@@ -18,12 +19,12 @@ function App() {
 
   useEffect(() => {
     const imgElement = document.getElementById('videoFeed');
-    const URL = '/video_grid';
+    const URL = currentReferenceImageId ? `/diff?reference_image_id=${currentReferenceImageId}` : '/video_grid';
     imgElement.src = URL;
     
     // Fetch initial list
     fetchReferenceImages();
-  }, []);
+  }, [currentReferenceImageId]);
 
   const buttonStyle = {
     display: 'block',
@@ -57,6 +58,8 @@ function App() {
     .then(response => response.json())
     .then(data => {
       if (data.status === 'success') {
+        // Clear the text box
+        setCaptureName('');        
         // Refresh menu items
         fetchReferenceImages();
       } else {
@@ -68,6 +71,9 @@ function App() {
     });
   };
 
+  const handleImageSelection = (id) => {
+    setCurrentReferenceImageId(id);
+  };
 
   return (
     <div className="App" style={{ backgroundColor: 'black', height: '100vh', width: '100vw' }}>
@@ -107,6 +113,7 @@ function App() {
             <li key={index}>
               <div 
                 style={buttonStyle}
+                onClick={() => handleImageSelection(item.id)}
                 onMouseOver={e => e.currentTarget.style.backgroundColor = '#0056b3'}
                 onMouseOut={e => e.currentTarget.style.backgroundColor = '#007BFF'}
               >

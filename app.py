@@ -8,6 +8,8 @@ app = Flask(__name__, static_folder='menu-app/build')
 
 camera = cv2.VideoCapture(0)
 
+database_path = "/db/database.sqlite"
+
 historical_frames = {
     "ten_seconds": {"frame": None, "timestamp": None},
     "one_minute": {"frame": None, "timestamp": None},
@@ -19,7 +21,7 @@ historical_frames = {
 
 # Initialize SQLite Database
 def init_db():
-    conn = sqlite3.connect("images.db")
+    conn = sqlite3.connect(database_path)
     cursor = conn.cursor()
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS images (
@@ -152,7 +154,7 @@ def save_reference_image():
         img_binary = img_encoded.tobytes()
 
         # Insert name, timestamp, and image into the SQLite database
-        conn = sqlite3.connect("images.db")
+        conn = sqlite3.connect(database_path)
         cursor = conn.cursor()
         cursor.execute("INSERT INTO images (name, timestamp, image) VALUES (?, ?, ?)", (name, timestamp, img_binary))
         conn.commit()
@@ -166,7 +168,7 @@ def save_reference_image():
 @app.route('/reference_images', methods=['GET'])
 def get_reference_images():
     try:
-        conn = sqlite3.connect("images.db")
+        conn = sqlite3.connect(database_path)
         cursor = conn.cursor()
         cursor.execute("SELECT id, name, timestamp FROM images")
         
@@ -184,6 +186,50 @@ def get_reference_images():
     
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)})
+
+@app.route('/diff', methods=['GET'])
+def video_diff():
+    reference_image_id = request.args.get('reference_image_id')
+    if not reference_image_id:
+        return "reference_image_id is required", 400
+
+    # Fetch reference image from the database
+    conn = sqlite3.connect(database_path)
+    cursor = conn.cursor()
+    cursor.execute("SELECT image FROM images WHERE id = ?", (reference_image_id,))
+    row = cursor.fetchone()
+    conn.close()
+    if row is None:
+        return "Reference image not found", 404
+    reference_image_data = np.frombuffer(row[0], dtype=np.uint8)
+    reference_image = cv2.imdecode(reference_image_data, cv2.IMREAD_COLOR)
+
+    def generate():
+        while True:
+            ret, frame = camera.read()
+            if not ret:
+                break
+
+            # Compute difference and draw bounding boxes
+            diff = cv2.absdiff(reference_image, frame)
+            gray = cv2.cvtColor(diff, cv2.COLOR_BGR2GRAY)
+            blur = cv2.GaussianBlur(gray, (5,5), 0)
+            _, thresh = cv2.threshold(blur, 20, 255, cv2.THRESH_BINARY)
+            contours, _ = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+            for contour in contours:
+                if cv2.contourArea(contour) < 500:
+                    continue
+                (x, y, w, h) = cv2.boundingRect(contour)
+                cv2.rectangle(frame, (x, y), (x+w, y+h), (0, 255, 0), 2)
+            
+            _, buffer = cv2.imencode('.jpg', frame)
+            frame = buffer.tobytes()
+
+            yield (b'--frame\r\n'
+                   b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')  # concat frame one by one and show result
+
+    return Response(generate(),
+                    mimetype='multipart/x-mixed-replace; boundary=frame')
 
 if __name__ == '__main__':
     init_db()
