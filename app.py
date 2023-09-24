@@ -187,6 +187,25 @@ def get_reference_images():
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)})
 
+@app.route('/reference_images', methods=['DELETE'])
+def delete_reference_image():
+    try:
+        id = request.args.get("id")
+        
+        if not id:
+            return jsonify({"status": "error", "message": "ID is required"})
+        
+        conn = sqlite3.connect(database_path)
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM images WHERE id = ?", (id,))
+        conn.commit()
+        conn.close()
+        
+        return jsonify({"status": "success"})
+        
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)})
+
 @app.route('/diff', methods=['GET'])
 def video_diff():
     reference_image_id = request.args.get('reference_image_id')
