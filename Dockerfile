@@ -72,9 +72,8 @@ RUN /usr/bin/node -v
 RUN /usr/bin/npm -v
 RUN /usr/bin/npx -v
 
-# Copy the source code
+# Copy Node source code
 WORKDIR /app
-COPY app.py /app/
 COPY menu-app/package.json /app/menu-app/
 COPY menu-app/package-lock.json /app/menu-app/
 COPY menu-app/src/ /app/menu-app/src/
@@ -85,6 +84,10 @@ RUN set -x && \
     cd menu-app && \
     export HOME=/app && \
     npm run build
+
+# Copy python source code (after node build to minimize rebuild time)
+WORKDIR /app
+COPY app.py /app/
 
 # Make port 5000 available to the world outside this container
 EXPOSE 5000

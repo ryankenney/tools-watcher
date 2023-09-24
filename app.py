@@ -126,8 +126,8 @@ def video_grid():
     return Response(generate_grid(),
                     mimetype='multipart/x-mixed-replace; boundary=frame')
 
-@app.route('/save_reference', methods=['POST'])
-def save_reference():
+@app.route('/reference_images', methods=['POST'])
+def save_reference_image():
     try:
         name = request.form.get("name")  # Getting the 'name' field from POST request
         
@@ -163,8 +163,8 @@ def save_reference():
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)})
 
-@app.route('/get_references', methods=['GET'])
-def get_references():
+@app.route('/reference_images', methods=['GET'])
+def get_reference_images():
     try:
         conn = sqlite3.connect("images.db")
         cursor = conn.cursor()
