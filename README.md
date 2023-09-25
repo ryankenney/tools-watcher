@@ -15,7 +15,7 @@ I'm not a Node, React, Flask, or OpenCV developer,
 so it's very likely the code could use some craft work, but it works.
 
 
-A Word on Container Tech
+A Word on Container Software
 ----------------
 
 I had ChatGPT help solve a problem I often hit, I want the software to build/run regardless
